@@ -6,10 +6,42 @@ on:
       - 'v*.*.*'
 
 permissions:
-  contents: write      # required: publisher-github needs releases:write
+  contents: write      # required: gh release create/upload needs releases:write
+
+# Workflow-level env. Flip SKIP_NOTARIZE back to 'false' (or remove it)
+# once Apple has configured the team for notarization (pending support ticket).
+env:
+  SKIP_NOTARIZE: 'true'
 
 jobs:
-  release:
+  # Stage 1: idempotently create the draft release so both matrix legs can
+  # upload into the same one without a race. Replaces publisher-github which
+  # had a race condition between parallel matrix legs ("Not Found" 404s).
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create draft release (idempotent)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — assets will be appended."
+          else
+            gh release create "$TAG" \
+              --draft \
+              --title "$TAG" \
+              --generate-notes \
+              --repo "${{ github.repository }}"
+          fi
+
+  # Stage 2: matrix build + upload. Each leg produces its platform's
+  # artifacts locally (electron-forge make) then uploads them to the
+  # pre-created draft release (gh release upload). No publisher-github.
+  build:
+    needs: create-release
     strategy:
       fail-fast: false       # one platform failing shouldn't kill the other
       matrix:
@@ -37,11 +69,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # -------- macOS-only: cert import + ASC key decode --------
-      # Use battle-tested apple-actions/import-codesign-certs instead of
-      # hand-rolled `security` commands — it correctly sets up the temp
-      # keychain, preserves login-keychain in the search list, and handles
-      # key-partition-list so codesign can access the private key.
+      # -------- macOS-only: cert import (signing still happens) --------
       - name: Import Developer ID certificate
         if: matrix.os == 'macos-14'
         uses: apple-actions/import-codesign-certs@v3
@@ -51,14 +79,11 @@ jobs:
 
       - name: Verify signing identity is available
         if: matrix.os == 'macos-14'
-        run: |
-          echo "--- Available codesigning identities ---"
-          security find-identity -v -p codesigning
-          echo "--- Keychain search list ---"
-          security list-keychain -d user
+        run: security find-identity -v -p codesigning
 
-      - name: Write ASC API key to disk                          # Pitfall 4
-        if: matrix.os == 'macos-14'
+      # -------- macOS-only: ASC API key decode (only if notarize enabled) --------
+      - name: Write ASC API key to disk
+        if: matrix.os == 'macos-14' && env.SKIP_NOTARIZE != 'true'
         env:
           APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
         run: |
@@ -67,9 +92,9 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "APPLE_API_KEY=$KEY_PATH" >> "$GITHUB_ENV"
 
-      # -------- test + build + publish --------
+      # -------- test + build --------
       # Rebuild native modules against Node ABI for vitest; Forge will
-      # re-rebuild for Electron ABI during publish via its auto-unpack-natives plugin.
+      # re-rebuild for Electron ABI during make via its auto-unpack-natives plugin.
       - name: Rebuild native modules for Node (test ABI)
         shell: bash
         run: npm rebuild better-sqlite3
@@ -78,44 +103,61 @@ jobs:
         run: npm test
 
       # Build the React-based player page into assets/player/.
-      # Forge's packagerConfig.extraResource references this directory,
-      # so it must exist before 'electron-forge publish' runs.
+      # Forge's packagerConfig.extraResource references this directory.
       - name: Build player page
         run: npm run build:player
 
-      - name: Build universal macOS (if darwin)
+      - name: Make macOS (universal, signed, notarize gated by SKIP_NOTARIZE)
         if: matrix.os == 'macos-14'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_API_KEY: ${{ env.APPLE_API_KEY }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npx electron-forge publish --arch=universal --platform=darwin
+        run: npx electron-forge make --arch=universal --platform=darwin
 
-      - name: Build Windows (if win32)
+      - name: Make Windows (x64 squirrel)
         if: matrix.os == 'windows-latest'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-forge publish --arch=x64 --platform=win32
+        run: npx electron-forge make --arch=x64 --platform=win32
 
-      # -------- generate + upload electron-updater manifest --------
-      - name: Generate and upload latest-mac.yml
+      # -------- upload artifacts to draft release --------
+      - name: Upload macOS artifacts
         if: matrix.os == 'macos-14'
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/generate-update-manifest.mjs darwin
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "--- Artifacts in out/make ---"
+          find out/make -type f | sort
+          echo "--- Uploading DMG + ZIP ---"
+          find out/make -type f \( -name '*.dmg' -o -name '*.zip' \) -print0 \
+            | xargs -0 -I {} gh release upload "$TAG" {} --clobber --repo "$GITHUB_REPOSITORY"
+          echo "--- Generating and uploading latest-mac.yml ---"
+          node scripts/generate-update-manifest.mjs darwin
 
-      - name: Generate and upload latest.yml
+      - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/generate-update-manifest.mjs win32
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "--- Artifacts in out/make ---"
+          find out/make -type f | sort
+          echo "--- Uploading Setup.exe + nupkg + RELEASES ---"
+          find out/make -type f \( -name '*Setup.exe' -o -name '*.nupkg' -o -name 'RELEASES' \) -print0 \
+            | xargs -0 -I {} gh release upload "$TAG" {} --clobber --repo "$GITHUB_REPOSITORY"
+          echo "--- Generating and uploading latest.yml ---"
+          node scripts/generate-update-manifest.mjs win32
 
       # -------- cleanup (runs even on failure) --------
-      # Note: apple-actions/import-codesign-certs creates its own temp
-      # keychain and cleans it up at job end; we only clean our own files.
-      - name: Cleanup macOS keychain and key file
+      # apple-actions/import-codesign-certs creates its own temp keychain and
+      # cleans it up at job end; we only clean our ASC key file.
+      - name: Cleanup ASC key file
         if: always() && matrix.os == 'macos-14'
-        run: |
-          rm -f "$RUNNER_TEMP/AuthKey.p8" || true
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8" || true

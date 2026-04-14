@@ -22,7 +22,11 @@ const config: ForgeConfig = {
         hardenedRuntime: true,
       }),
     },
-    osxNotarize: process.env.APPLE_API_KEY ? {          // D-08 — gate: skip locally if no creds
+    // D-08 — notarize gate:
+    //  skip locally (no APPLE_API_KEY), or
+    //  skip temporarily when SKIP_NOTARIZE=true (Apple team config issue — support ticket pending).
+    //  To re-enable, remove SKIP_NOTARIZE from the workflow env.
+    osxNotarize: (process.env.APPLE_API_KEY && process.env.SKIP_NOTARIZE !== 'true') ? {
       appleApiKey: process.env.APPLE_API_KEY,           // FILE PATH to .p8 (Pitfall 4 — not base64 content)
       appleApiKeyId: process.env.APPLE_API_KEY_ID!,     // 10-char ASC key ID
       appleApiIssuer: process.env.APPLE_API_ISSUER!,    // ASC issuer UUID
