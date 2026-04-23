@@ -102,6 +102,13 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # After tests, rebuild native modules for Electron ABI.
+      # The preceding `npm rebuild` switched to Node ABI for vitest;
+      # afterCopy copies from node_modules so they must be Electron-compatible.
+      - name: Rebuild native modules for Electron ABI
+        shell: bash
+        run: npx electron-rebuild -f -w better-sqlite3
+
       # Build the React-based player page into assets/player/.
       # Forge's packagerConfig.extraResource references this directory.
       - name: Build player page
