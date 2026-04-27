@@ -69,7 +69,12 @@ export function createWindow(storage: StorageService): BrowserWindow {
   };
 
   if (isMac) {
-    browserWindowOptions.titleBarStyle = 'hidden';
+    // D-01: 'hiddenInset' shifts traffic lights inset and provides ~28px OS-level drag
+    // strip per Electron base-window-options docs. 'hidden' (the previous value) was the
+    // root cause of the missing-traffic-lights bug since the website's #appMenu (z-index
+    // 999999) was visually covering the buttons. 'hiddenInset' decouples the OS chrome
+    // from the website header so the buttons remain visible above content.
+    browserWindowOptions.titleBarStyle = 'hiddenInset';
   } else {
     browserWindowOptions.titleBarStyle = 'hidden';
     browserWindowOptions.titleBarOverlay = {
