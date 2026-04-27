@@ -48,6 +48,7 @@ export interface AnimecixAPI {
   maximize: () => Promise<void>;
   close: () => Promise<void>;
   isMaximized: () => Promise<boolean>;
+  setFullscreen: (fullscreen: boolean) => Promise<void>;
 
   // Event subscription — returns unsubscribe function
   onFullscreenChange: (cb: (isFullscreen: boolean) => void) => () => void;

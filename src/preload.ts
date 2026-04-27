@@ -14,6 +14,7 @@ const api: AnimecixAPI = {
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  setFullscreen: (fullscreen: boolean) => ipcRenderer.invoke('window:setFullscreen', fullscreen),
 
   // Fullscreen event subscription — returns unsubscribe function
   onFullscreenChange: (cb: (isFullscreen: boolean) => void) => {
