@@ -179,6 +179,11 @@ if (!gotLock) {
         #appMenu .col-sm-3 {
           display: none !important;
         }
+        /* Offset left column so it clears the traffic lights (~78px inset) */
+        #appMenu .col-sm-9,
+        material-navbar .navbar-container .col-sm-9 {
+          padding-left: 78px !important;
+        }
       `
       : `
         #appMenu,
