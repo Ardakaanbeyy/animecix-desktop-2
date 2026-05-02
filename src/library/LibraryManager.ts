@@ -1,10 +1,8 @@
-import { WebContentsView, BrowserWindow, app } from 'electron';
-import path from 'node:path';
+import { BrowserWindow } from 'electron';
 import log from 'electron-log';
 
 export class LibraryManager {
-  private view: WebContentsView | null = null;
-  private resizeHandler: (() => void) | null = null;
+  private active = false;
   private mainWindow: BrowserWindow;
 
   constructor(mainWindow: BrowserWindow) {
@@ -12,64 +10,28 @@ export class LibraryManager {
   }
 
   show(): void {
-    if (this.view) return;
-
-    const preloadPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'app', '.vite', 'build', 'preload.js')
-      : path.join(app.getAppPath(), '.vite', 'build', 'preload.js');
-
-    this.view = new WebContentsView({
-      webPreferences: {
-        preload: preloadPath,
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: false,
-      },
-    });
-
-    this.mainWindow.contentView.addChildView(this.view);
-    this.updateBounds();
-
-    this.resizeHandler = () => this.updateBounds();
-    this.mainWindow.on('resize', this.resizeHandler);
-
-    void this.view.webContents.loadURL('animecix-library://bundle/').then(() => {
-      if (this.view) {
-        this.view.webContents.focus();
-      }
-    });
-    log.info('[library] Library WebContentsView shown');
+    if (this.active) return;
+    this.active = true;
+    void this.mainWindow.loadURL('animecix-library://bundle/');
+    log.info('[library] Navigated mainWindow to library page');
   }
 
   hide(): void {
-    if (!this.view) return;
-
-    if (this.resizeHandler) {
-      this.mainWindow.removeListener('resize', this.resizeHandler);
-      this.resizeHandler = null;
-    }
-
-    this.mainWindow.contentView.removeChildView(this.view);
-    this.view.webContents.close();
-    this.view = null;
-    log.info('[library] Library WebContentsView hidden');
+    if (!this.active) return;
+    this.active = false;
+    void this.mainWindow.loadURL('https://animecix.tv');
+    log.info('[library] Navigated mainWindow back to website');
   }
 
   isVisible(): boolean {
-    return this.view !== null;
+    return this.active;
   }
 
   getMainWindow(): BrowserWindow {
     return this.mainWindow;
   }
 
-  private updateBounds(): void {
-    if (!this.view) return;
-    const [width, height] = this.mainWindow.getContentSize();
-    this.view.setBounds({ x: 0, y: 0, width, height });
-  }
-
   dispose(): void {
-    this.hide();
+    this.active = false;
   }
 }
