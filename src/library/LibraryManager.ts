@@ -51,7 +51,12 @@ export class LibraryManager {
     this.resizeHandler = () => this.updateBounds();
     this.mainWindow.on('resize', this.resizeHandler);
 
-    void this.view.webContents.loadURL('animecix-library://bundle/');
+    void this.view.webContents.loadURL('animecix-library://bundle/').then(() => {
+      if (this.view) {
+        this.view.webContents.focus();
+      }
+    });
+    this.mainWindow.setTopBrowserView(this.view);
     log.info('[library] Library BrowserView shown');
   }
 

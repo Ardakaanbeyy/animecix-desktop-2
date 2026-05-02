@@ -8,7 +8,7 @@ const isMac = navigator.platform.startsWith('Mac');
 
 export function InternetBanner({ onGoToWebsite }: Props) {
   return (
-    <div className="drag-region" style={{
+    <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
       height: 48, background: '#1f2937',
       borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -26,12 +26,12 @@ export function InternetBanner({ onGoToWebsite }: Props) {
         <span style={{ fontSize: 14, fontWeight: 400 }}>İnternet bağlantısı mevcut</span>
       </div>
       <button
-        className="no-drag"
         onClick={onGoToWebsite}
         style={{
           background: 'var(--accent)', color: '#fff',
           fontSize: 13, fontWeight: 600, lineHeight: '1.4',
           padding: '6px 14px', borderRadius: 4,
+          cursor: 'pointer',
         }}
       >
         Siteye Dön
