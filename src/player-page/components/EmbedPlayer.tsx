@@ -42,12 +42,13 @@ function parseVidFromSearch(): string | undefined {
 export function EmbedPlayer() {
   const id = parseIdFromPath();
   const vid = parseVidFromSearch();
+  const isOffline = id === 'offline';
 
   const playerRef = useRef<MediaPlayerInstance>(null);
   const readyFiredRef = useRef(false);
   const pendingVideoChange = useRef(false);
 
-  const { data, meta, loading, fetchVideo, setPrefetchedData } = useVideoData(id, vid);
+  const { data, meta, loading, offlineNav, fetchVideo, setPrefetchedData } = useVideoData(id, vid);
   const canvasRef = useColorExtraction();
 
   // changeVideo: reset time to 0 first, then fetch new video
@@ -207,6 +208,10 @@ export function EmbedPlayer() {
   }
 
   function onEnded() {
+    if (isOffline && offlineNav?.nextEpisodeId) {
+      (window as any).animecix?.playOfflineEpisode?.(offlineNav.nextEpisodeId);
+      return;
+    }
     postToParent('ended');
   }
 
@@ -243,14 +248,60 @@ export function EmbedPlayer() {
     );
   }
 
+  const showOfflineNav = isOffline && offlineNav;
+
   return (
     <>
+      {isOffline && (
+        <div className="offline-header">
+          <button
+            className="offline-back-btn"
+            onClick={() => (window as any).animecix?.showLibrary?.()}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+          </button>
+          {offlineNav && (
+            <span className="offline-episode-info">
+              {offlineNav.episodeTitle}
+              {offlineNav.seasonNumber && offlineNav.episodeNumber &&
+                ` — S${offlineNav.seasonNumber}E${offlineNav.episodeNumber}`}
+            </span>
+          )}
+          {showOfflineNav && (offlineNav.prevEpisodeId || offlineNav.nextEpisodeId) && (
+            <div className="offline-nav">
+              {offlineNav.prevEpisodeId && (
+                <button
+                  className="offline-nav-btn"
+                  onClick={() => (window as any).animecix?.playOfflineEpisode?.(offlineNav.prevEpisodeId)}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                  </svg>
+                </button>
+              )}
+              {offlineNav.nextEpisodeId && (
+                <button
+                  className="offline-nav-btn"
+                  onClick={() => (window as any).animecix?.playOfflineEpisode?.(offlineNav.nextEpisodeId)}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <MediaPlayer
         ref={playerRef}
         src={sources as never}
         autoPlay
         playsInline
-        crossOrigin="anonymous"
+        crossOrigin={isOffline ? undefined : 'anonymous'}
         storage="tau-video"
         duration={data.duration}
         load="eager"
@@ -279,7 +330,7 @@ export function EmbedPlayer() {
         <DefaultVideoLayout
           icons={defaultLayoutIcons}
           translations={turkishTranslations}
-          thumbnails={'https://tau-video.xyz/preview/' + id}
+          thumbnails={isOffline ? undefined : 'https://tau-video.xyz/preview/' + id}
           playbackRates={[0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4]}
         />
         <SkipButton meta={meta} />

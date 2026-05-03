@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { pathToFileURL } from 'url';
+import * as fs from 'fs';
 
 // CRITICAL: Must run at import time (module top-level) before app.ready fires.
 // Electron requires registerSchemesAsPrivileged to be called before app.whenReady().
@@ -171,7 +171,7 @@ export function registerOfflineProtocol(
   storage: OfflineStorageService,
 ): void {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { protocol, net } = require('electron') as typeof import('electron');
+  const { protocol } = require('electron') as typeof import('electron');
 
   const resolvedDownloads = path.resolve(downloadsDir);
   const resolvedCache = path.resolve(cacheDir);
@@ -227,9 +227,6 @@ export function registerOfflineProtocol(
     }
 
     // Security: resolved file path must be within one of the allowed root directories.
-    // This is a double-check — the primary guard is that filePath comes from the
-    // database (outputPath / mp4Path), not directly from the URL. But we still
-    // validate to defend against database corruption or injection.
     const resolvedFile = path.resolve(filePath);
     if (
       !resolvedFile.startsWith(resolvedDownloads + path.sep) &&
@@ -242,14 +239,59 @@ export function registerOfflineProtocol(
     const mimeType = getOfflineMimeType(ext);
 
     try {
-      const fileUrl = pathToFileURL(filePath).toString();
-      const response = await net.fetch(fileUrl);
-      const body = await response.arrayBuffer();
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+      const rangeHeader = request.headers.get('range');
+
+      if (rangeHeader) {
+        const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+        if (match) {
+          const start = parseInt(match[1], 10);
+          const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+          const chunkSize = end - start + 1;
+
+          const nodeStream = fs.createReadStream(filePath, { start, end });
+          const body = new ReadableStream({
+            start(controller) {
+              nodeStream.on('data', (chunk: Buffer) => controller.enqueue(chunk));
+              nodeStream.on('end', () => controller.close());
+              nodeStream.on('error', (e) => controller.error(e));
+            },
+            cancel() { nodeStream.destroy(); },
+          });
+
+          return new Response(body, {
+            status: 206,
+            headers: {
+              'Content-Type': mimeType,
+              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+              'Content-Length': String(chunkSize),
+              'Accept-Ranges': 'bytes',
+            },
+          });
+        }
+      }
+
+      const nodeStream = fs.createReadStream(filePath);
+      const body = new ReadableStream({
+        start(controller) {
+          nodeStream.on('data', (chunk: Buffer) => controller.enqueue(chunk));
+          nodeStream.on('end', () => controller.close());
+          nodeStream.on('error', (e) => controller.error(e));
+        },
+        cancel() { nodeStream.destroy(); },
+      });
+
       return new Response(body, {
         status: 200,
-        headers: { 'Content-Type': mimeType },
+        headers: {
+          'Content-Type': mimeType,
+          'Content-Length': String(fileSize),
+          'Accept-Ranges': 'bytes',
+        },
       });
-    } catch {
+    } catch (err) {
+      console.error('[offline-protocol] Failed:', err);
       return new Response('Not Found', { status: 404 });
     }
   });

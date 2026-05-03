@@ -1,10 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Video, SkipMeta } from '../types';
 
+export interface OfflineNavigation {
+  prevEpisodeId: string | null;
+  nextEpisodeId: string | null;
+  episodeTitle: string;
+  seasonNumber: string;
+  episodeNumber: string;
+}
+
 export function useVideoData(initialId: string, initialVid?: string) {
   const [data, setData] = useState<Video | null>(null);
   const [meta, setMeta] = useState<SkipMeta | null>(null);
   const [loading, setLoading] = useState(true);
+  const [offlineNav, setOfflineNav] = useState<OfflineNavigation | null>(null);
   const cancelRef = useRef<(() => void) | undefined>(undefined);
   // Track whether we received pre-fetched data from the parent (desktop app fast path)
   const prefetchedRef = useRef(false);
@@ -74,9 +83,12 @@ export function useVideoData(initialId: string, initialVid?: string) {
   // pre-fetched data arrives via postMessage before the API responds
   useEffect(() => {
     if (initialId === 'offline') {
-      (window as any).animecix?.getOfflineVideoData?.().then((data: any) => {
-        if (data?.video) {
-          setPrefetchedData(data.video, data.skipMeta ?? null);
+      (window as any).animecix?.getOfflineVideoData?.().then((result: any) => {
+        if (result?.video) {
+          setPrefetchedData(result.video, result.skipMeta ?? null);
+          if (result.navigation) {
+            setOfflineNav(result.navigation);
+          }
         }
       }).catch(() => {});
       return;
@@ -89,5 +101,5 @@ export function useVideoData(initialId: string, initialVid?: string) {
     };
   }, [initialId, initialVid, fetchVideo, setPrefetchedData]);
 
-  return { data, meta, loading, fetchVideo, setPrefetchedData };
+  return { data, meta, loading, offlineNav, fetchVideo, setPrefetchedData };
 }

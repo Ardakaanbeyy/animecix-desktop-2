@@ -319,6 +319,13 @@ export class StorageService {
       );
   }
 
+  getAnimeTitleForEpisode(episodeId: string): string | null {
+    const row = this.db
+      .prepare('SELECT anime_title FROM episode_metadata WHERE episode_id = ?')
+      .get(episodeId) as { anime_title: string } | undefined;
+    return row?.anime_title ?? null;
+  }
+
   getLibraryAnimes(): { animeTitle: string; posterPath: string; episodeCount: number }[] {
     const rows = this.db
       .prepare(

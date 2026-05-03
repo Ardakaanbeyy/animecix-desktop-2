@@ -90,6 +90,25 @@ export function registerLibraryIpc(
     // The "/embed/offline" path is a dummy -- the player will receive real
     // data via initVideoData message below (same pattern as Angular's loadOfflineVideo).
     if (!mainWindow.isDestroyed()) {
+      // Build navigation info (prev/next episode) and episode metadata
+      let prevEpisodeId: string | null = null;
+      let nextEpisodeId: string | null = null;
+      let episodeTitle = '';
+      let seasonNum = '';
+      let episodeNum = '';
+      const animeTitle = storage.getAnimeTitleForEpisode(episodeId);
+      if (animeTitle) {
+        episodeTitle = animeTitle;
+        const episodes = storage.getLibraryEpisodes(animeTitle);
+        const idx = episodes.findIndex((e) => e.episodeId === episodeId);
+        if (idx >= 0) {
+          seasonNum = episodes[idx].seasonNumber;
+          episodeNum = episodes[idx].episodeNumber;
+          if (idx > 0) prevEpisodeId = episodes[idx - 1].episodeId;
+          if (idx < episodes.length - 1) nextEpisodeId = episodes[idx + 1].episodeId;
+        }
+      }
+
       pendingOfflineData = {
         video: {
           _id: episodeId,
@@ -97,11 +116,12 @@ export function registerLibraryIpc(
           subs: subtitles,
           duration: 0,
           title_id: '',
-          season_number: '',
-          episode_number: '',
+          season_number: seasonNum,
+          episode_number: episodeNum,
           translator: '',
         },
         skipMeta: null,
+        navigation: { prevEpisodeId, nextEpisodeId, episodeTitle, seasonNumber: seasonNum, episodeNumber: episodeNum },
       };
       await mainWindow.loadURL('tau-player://bundle/embed/offline');
       log.info(`[library] Playing offline episode: ${episodeId}`);
