@@ -82,30 +82,25 @@ export function registerLibraryIpc(
     // The "/embed/offline" path is a dummy -- the player will receive real
     // data via initVideoData message below (same pattern as Angular's loadOfflineVideo).
     if (!mainWindow.isDestroyed()) {
-      await mainWindow.loadURL('tau-player://bundle/embed/offline');
-
-      // Step 4: After page load, send initVideoData to the player.
-      // The player's useParentMessages hook listens for window 'message' events.
-      // executeJavaScript runs in the renderer context where window.postMessage works.
-      // This mirrors the Angular website's loadOfflineVideo postMessage pattern exactly.
-      const payload = JSON.stringify({
-        action: 'initVideoData',
-        video: {
-          _id: episodeId,
-          urls: [{ label: 'offline', url: offlineUrl, size: 0 }],
-          subs: subtitles,
-          duration: 0,
-          title_id: '',
-          season_number: '',
-          episode_number: '',
-          translator: '',
-        },
-        skipMeta: null,
-        source: { type: 'local', url: offlineUrl },
+      const videoData = JSON.stringify({
+        _id: episodeId,
+        urls: [{ label: 'offline', url: offlineUrl, size: 0 }],
+        subs: subtitles,
+        duration: 0,
+        title_id: '',
+        season_number: '',
+        episode_number: '',
+        translator: '',
       });
-      await mainWindow.webContents.executeJavaScript(
-        `window.postMessage(${payload}, '*');`,
-      );
+
+      // Inject offline data at dom-ready (before React module scripts execute).
+      // This sets window.__offlineVideoData so the player reads it synchronously at mount.
+      mainWindow.webContents.once('dom-ready', () => {
+        mainWindow.webContents.executeJavaScript(
+          `window.__offlineVideoData = { video: ${videoData}, skipMeta: null };`
+        ).catch(() => {});
+      });
+      await mainWindow.loadURL('tau-player://bundle/embed/offline');
       log.info(`[library] Playing offline episode: ${episodeId}`);
     }
   });
