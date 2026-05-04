@@ -9,7 +9,7 @@ interface Props {
 
 export function AnimePosterCard({ anime, isExpanded, onClick }: Props) {
   const posterUrl = anime.posterPath
-    ? `animecix-library://posters/${anime.posterPath.split('/').pop() ?? ''}`
+    ? `animecix-library://posters/${anime.posterPath.split(/[/\\]/).pop() ?? ''}`
     : '';
 
   return (
