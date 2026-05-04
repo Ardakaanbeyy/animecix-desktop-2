@@ -35,6 +35,9 @@ const api: AnimecixAPI = {
   // Network status — synchronous
   isOnline: () => navigator.onLine,
 
+  // Open URL in system default browser (used by Angular for Google OAuth login)
+  openLink: (url: string) => ipcRenderer.invoke('window:openLink', url),
+
   // --- Video data pre-fetch (fast path for tau-video sources) ---
   // Website calls fetchVideoData BEFORE loading the player iframe.
   // Main process fetches from tau-video.xyz API (no CORS, Node.js net module).

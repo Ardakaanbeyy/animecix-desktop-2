@@ -31,8 +31,10 @@ export function registerDeepLinkProtocol(): void {
  * Security: rejects non-animecix:// schemes, non-login paths, and data with '..' or '/'
  */
 export function parseDeepLinkUrl(
-  url: string,
+  rawUrl: string,
 ): { status: string | null; data: string } | null {
+  const url = decodeURIComponent(rawUrl);
+
   // Validate scheme
   if (!url.startsWith(ANIMECIX_SCHEME)) {
     return null;
@@ -57,15 +59,19 @@ export function parseDeepLinkUrl(
     return null;
   }
 
+  // Deep link format: animecix://login{status|data}
+  // Strip curly braces from the payload before parsing
+  const payload = afterLogin.replace(/[{}]/g, '');
+
   let status: string | null = null;
   let data: string;
 
-  if (afterLogin.includes('|')) {
-    const pipeIdx = afterLogin.indexOf('|');
-    status = afterLogin.slice(0, pipeIdx);
-    data = afterLogin.slice(pipeIdx + 1);
+  if (payload.includes('|')) {
+    const pipeIdx = payload.indexOf('|');
+    status = payload.slice(0, pipeIdx);
+    data = payload.slice(pipeIdx + 1);
   } else {
-    data = afterLogin;
+    data = payload;
   }
 
   // Validate data: reject path traversal and forward slashes

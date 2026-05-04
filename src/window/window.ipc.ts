@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, shell } from 'electron';
 
 export function registerWindowIpc(win: BrowserWindow): void {
   // Window control handlers
@@ -29,6 +29,22 @@ export function registerWindowIpc(win: BrowserWindow): void {
   // enter-full-screen / leave-full-screen listeners below (D-11 — no new event source).
   ipcMain.handle('window:setFullscreen', (_event, fullscreen: boolean) => {
     win.setFullScreen(Boolean(fullscreen));
+  });
+
+  // Open URL in system default browser (used by Angular for Google OAuth).
+  // Angular sends relative URLs like "secure/auth/social/google/login" —
+  // prepend site base URL when not absolute (matches old app's APP_URL behavior).
+  ipcMain.handle('window:openLink', (_event, url: string) => {
+    let fullUrl = url;
+    if (!url.startsWith('http')) {
+      fullUrl = import.meta.env.VITE_SITE_URL + '/' + url;
+    }
+    try {
+      const parsed = new URL(fullUrl);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        void shell.openExternal(fullUrl);
+      }
+    } catch { /* invalid URL */ }
   });
 
   // Fullscreen event notifications to renderer
