@@ -106,28 +106,32 @@ export class DownloadQueue extends EventEmitter {
   }
 
   cancel(id: string): void {
+    const item = this.storage.getDownloadById(id);
+    if (!item) return;
+
+    // Completed downloads are managed by the library delete button — cancel
+    // should only affect in-progress or queued downloads.
+    if (item.status === 'completed') return;
+
     if (this.activeDownloadId === id && this.activeDownloader) {
       this.activeDownloader.pause(); // aborts requests
       this.activeDownloader = null;
       this.activeDownloadId = null;
     }
 
-    // Only clean up temp chunk files — completed video files and library
-    // entries are managed by the library page's delete action, not here.
-    const item = this.storage.getDownloadById(id);
-    if (item) {
-      for (const chunk of item.chunks) {
-        try {
-          if (fs.existsSync(chunk.tempPath)) {
-            fs.unlinkSync(chunk.tempPath);
-          }
-        } catch {
-          // Ignore cleanup errors
+    // Clean up temp chunk files only
+    for (const chunk of item.chunks) {
+      try {
+        if (fs.existsSync(chunk.tempPath)) {
+          fs.unlinkSync(chunk.tempPath);
         }
+      } catch {
+        // Ignore cleanup errors
       }
     }
 
     this.storage.deleteDownload(id);
+    this.storage.deleteEpisodeMetadata(item.episodeId);
     this.processNext();
   }
 
