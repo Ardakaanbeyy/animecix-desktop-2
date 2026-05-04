@@ -49,19 +49,22 @@ export function LibraryApp() {
     );
   }
 
+  const isWindows = navigator.platform.startsWith('Win');
+  const titlebarOffset = isWindows ? 40 : 0;
+
   return (
     <div style={{
       background: 'var(--bg-primary)', minHeight: '100vh',
       display: 'flex', flexDirection: 'column',
     }}>
       {!isOnline && <div className="drag-region" style={{
-        position: 'fixed', top: 0, left: 0, right: 0, height: 48, zIndex: 999,
+        position: 'fixed', top: 0, left: 0, right: 0, height: 48 + titlebarOffset, zIndex: 999,
       }} />}
       {isOnline && <InternetBanner onGoToWebsite={handleGoToWebsite} />}
 
       <div style={{
         padding: '24px 32px 16px',
-        paddingTop: isOnline ? '72px' : '56px',
+        paddingTop: (isOnline ? 72 : 56) + titlebarOffset,
       }}>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
       </div>
