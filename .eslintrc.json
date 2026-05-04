@@ -13,17 +13,9 @@
     "plugin:import/typescript"
   ],
   "parser": "@typescript-eslint/parser",
-  "settings": {
-    "import/resolver": {
-      "typescript": {},
-      "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx"]
-      }
-    }
-  },
   "rules": {
     "import/no-unresolved": ["error", {
-      "ignore": ["vitest/config", "@vidstack/react", "@vidstack/react/*"]
+      "ignore": ["vitest/config", "@vidstack/react", "@vidstack/react/*", ".*\\.js$"]
     }],
     "@typescript-eslint/no-var-requires": "warn",
     "@typescript-eslint/no-empty-function": "warn",
