@@ -101,7 +101,11 @@ export class UpdaterService {
 
   async install(): Promise<void> {
     log.info('[updater] quitAndInstall');
-    autoUpdater.quitAndInstall(); // D-17
+    // quitAndInstall calls app.quit() internally, but macOS close-to-hide
+    // intercept can prevent the actual quit. Force exit after a short delay
+    // to ensure the update installs.
+    autoUpdater.quitAndInstall(false, true);
+    setTimeout(() => app.exit(0), 1000);
   }
 
   dismissBannerForSession(): void {
