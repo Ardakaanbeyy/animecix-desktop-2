@@ -45,8 +45,13 @@ describe('Downloader.validateUrl', () => {
     expect(() => Downloader.validateUrl('https://example.com/file.mp4')).not.toThrow();
   });
 
-  it('accepts http URLs', () => {
-    expect(() => Downloader.validateUrl('http://example.com/file.mp4')).not.toThrow();
+  it('accepts http URLs for localhost only', () => {
+    expect(() => Downloader.validateUrl('http://127.0.0.1:3000/file.mp4')).not.toThrow();
+    expect(() => Downloader.validateUrl('http://localhost:3000/file.mp4')).not.toThrow();
+  });
+
+  it('rejects http URLs for remote hosts', () => {
+    expect(() => Downloader.validateUrl('http://example.com/file.mp4')).toThrow('Invalid URL scheme');
   });
 
   it('rejects file:// URLs', () => {

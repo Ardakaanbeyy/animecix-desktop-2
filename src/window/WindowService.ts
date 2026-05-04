@@ -133,17 +133,34 @@ export function createWindow(storage: StorageService): BrowserWindow {
     storage.saveWindowBounds({ ...bounds, maximized: true });
   });
 
-  // Handle window-all-closed in WindowService (non-macOS quit)
-  app.on('window-all-closed', () => {
-    if (!isMac) {
-      app.quit();
-    }
-  });
-
   // Intercept popup links — open in default browser, never open new BrowserWindow
   win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        void shell.openExternal(url);
+      }
+    } catch { /* invalid URL — ignore */ }
     return { action: 'deny' };
+  });
+
+  // Restrict navigation to trusted origins only
+  const SITE_HOST = new URL(import.meta.env.VITE_SITE_URL).hostname;
+  win.webContents.on('will-navigate', (event, url) => {
+    try {
+      const parsed = new URL(url);
+      const isTrusted =
+        parsed.hostname === SITE_HOST ||
+        parsed.hostname === 'localhost' ||
+        parsed.protocol === 'tau-player:' ||
+        parsed.protocol === 'animecix-library:' ||
+        parsed.protocol === 'animecix-offline:';
+      if (!isTrusted) {
+        event.preventDefault();
+      }
+    } catch {
+      event.preventDefault();
+    }
   });
 
   return win;

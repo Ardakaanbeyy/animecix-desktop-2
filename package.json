@@ -2,7 +2,7 @@
   "name": "animecix-v2",
   "productName": "AnimeciX",
   "version": "0.0.0-rc1",
-  "description": "My Electron application description",
+  "description": "Electron desktop app for AnimeciX — anime streaming, downloading, and offline playback",
   "main": ".vite/build/main.js",
   "private": true,
   "repository": {
@@ -24,6 +24,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
+    "pretest": "npm rebuild better-sqlite3 2>/dev/null || true",
     "test": "vitest run --reporter=dot",
     "build:player": "vite build --config vite.player.config.mts",
     "build:library": "vite build --config vite.library.config.mts",
@@ -31,7 +32,7 @@
     "verify-tag": "node scripts/verify-tag.mjs",
     "generate-update-manifest": "node scripts/generate-update-manifest.mjs"
   },
-  "keywords": [],
+  "keywords": ["electron", "anime", "streaming", "desktop", "video-player", "offline", "hls"],
   "author": {
     "name": "CaptainSP",
     "email": "19982002ke@gmail.com"

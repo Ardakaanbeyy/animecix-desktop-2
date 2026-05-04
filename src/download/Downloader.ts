@@ -8,6 +8,7 @@ import type { StorageService } from '../storage/StorageService';
 
 const MAX_DOWNLOAD_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
 const PROGRESS_PERSIST_INTERVAL = 1024 * 1024; // 1 MB
+const MAX_REDIRECTS = 5;
 
 export class Downloader extends EventEmitter {
   private url: string;
@@ -48,9 +49,10 @@ export class Downloader extends EventEmitter {
 
   static validateUrl(url: string): void {
     const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    const isLoopback = parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost';
+    if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLoopback)) {
       throw new Error(
-        `Invalid URL scheme: ${parsed.protocol} — only https: and http: are allowed`,
+        `Invalid URL scheme: ${parsed.protocol} — only https: is allowed (http: only for localhost)`,
       );
     }
   }
@@ -78,7 +80,7 @@ export class Downloader extends EventEmitter {
     const totalChunks = this.chunks.length;
 
     for (const chunk of incompleteChunks) {
-      this.downloadChunk(chunk)
+      this.downloadChunk(chunk, this.url)
         .then(() => {
           completedCount++;
           if (completedCount === totalChunks) {
@@ -108,7 +110,7 @@ export class Downloader extends EventEmitter {
     this.start();
   }
 
-  private downloadChunk(chunk: ChunkState): Promise<void> {
+  private downloadChunk(chunk: ChunkState, url: string, redirectCount = 0): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.isPaused) {
         reject(new Error('Download paused'));
@@ -130,11 +132,11 @@ export class Downloader extends EventEmitter {
         return;
       }
 
-      const parsed = new URL(this.url);
+      const parsed = new URL(url);
       const httpModule = parsed.protocol === 'https:' ? https : http;
 
       const req = httpModule.get(
-        this.url,
+        url,
         {
           headers: {
             Range: `bytes=${rangeStart}-${rangeEnd}`,
@@ -147,13 +149,23 @@ export class Downloader extends EventEmitter {
             res.statusCode < 400 &&
             res.headers.location
           ) {
-            // Follow redirect
+            // Follow redirect with HTTPS validation and depth limit
             req.destroy();
-            const redirectChunk = { ...chunk };
-            const oldUrl = this.url;
-            this.url = res.headers.location;
-            this.downloadChunk(redirectChunk).then(resolve).catch(reject);
-            this.url = oldUrl;
+            const redirectUrl = res.headers.location;
+            if (redirectCount >= MAX_REDIRECTS) {
+              reject(new Error(`Too many redirects (max ${MAX_REDIRECTS})`));
+              return;
+            }
+            try {
+              const redirectParsed = new URL(redirectUrl, url);
+              if (redirectParsed.protocol !== 'https:') {
+                reject(new Error(`Redirect to non-HTTPS URL: ${redirectParsed.protocol}`));
+                return;
+              }
+              this.downloadChunk({ ...chunk }, redirectParsed.href, redirectCount + 1).then(resolve).catch(reject);
+            } catch {
+              reject(new Error('Invalid redirect URL'));
+            }
             return;
           }
 

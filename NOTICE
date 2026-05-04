@@ -1,0 +1,37 @@
+AnimeciX Desktop
+Copyright (c) 2024-2026 Emirhan Eyidogan (CaptainSP)
+
+This product includes third-party software with the following licenses:
+
+────────────────────────────────────────────────────────────────────────
+
+jassub (https://github.com/ThaUnknown/jassub)
+License: MIT (JavaScript wrapper)
+Contains compiled components under:
+  - libass: LGPL-2.1-or-later (https://github.com/libass/libass)
+  - FreeType: FTL or GPL-2.0-or-later (https://freetype.org)
+
+The jassub WASM binary is loaded as a separate web worker and is not
+statically linked into this application. The LGPL-2.1 obligation is
+satisfied by dynamic linking (separate worker process). If you modify
+the LGPL-licensed source components, you must distribute those
+modifications under LGPL-2.1-or-later.
+
+────────────────────────────────────────────────────────────────────────
+
+abp-filter-parser (https://github.com/nicedoc/nicedoc.io)
+License: MPL-2.0
+
+MPL-2.0 is a file-level copyleft license. This dependency is used
+as-is without modification. If you fork and modify abp-filter-parser
+source files, you must distribute those modifications under MPL-2.0.
+
+────────────────────────────────────────────────────────────────────────
+
+hls.js (https://github.com/video-dev/hls.js)
+License: Apache-2.0
+
+────────────────────────────────────────────────────────────────────────
+
+electron-squirrel-startup
+License: Apache-2.0

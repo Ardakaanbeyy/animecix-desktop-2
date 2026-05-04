@@ -26,15 +26,15 @@
 ## HIGH
 
 ### Security
-- [ ] **H1. Downloader accepts HTTP** — `Downloader.validateUrl()` allows http:// but IPC enforces HTTPS-only. Make consistent.
-- [ ] **H2. Redirect following without URL validation (SSRF)** — `Downloader.ts:148`, `DownloadQueue.ts:257`, `StreamCache.ts:44`. Add HTTPS check + depth limit on redirects.
-- [ ] **H3. `shell.openExternal` without URL validation** — `WindowService.ts:141`. Validate scheme before opening.
-- [ ] **H4. No `will-navigate` handler** — Main window can navigate anywhere. Add trusted-origin restriction.
+- [x] **H1. Downloader accepts HTTP** — Now HTTPS-only (http: allowed only for localhost/127.0.0.1).
+- [x] **H2. Redirect following without URL validation (SSRF)** — Added HTTPS validation + MAX_REDIRECTS=5 depth limit.
+- [x] **H3. `shell.openExternal` without URL validation** — Now validates https:/http: scheme before opening.
+- [x] **H4. No `will-navigate` handler** — Added trusted-origin restriction (site host, localhost, custom protocols).
 - [!] **H5. `webSecurity: false`** — `WindowService.ts:72`. **INTENTIONAL**: Required for cross-origin video canvas color extraction. DO NOT CHANGE.
 
 ### Bugs
-- [ ] **H6. Duplicate `window-all-closed` handler** — `WindowService.ts:134` bypasses tray check in `main.ts:337`. Remove the one in WindowService.
-- [ ] **H7. URL mutation race condition** — `Downloader.ts:153-156`. `this.url` mutated during redirect, unsafe with concurrent chunks. Pass URL as parameter instead.
+- [x] **H6. Duplicate `window-all-closed` handler** — Removed from WindowService.ts. main.ts handler is now the single point.
+- [x] **H7. URL mutation race condition** — URL is now passed as parameter to downloadChunk, no more this.url mutation.
 - [ ] **H8. Duplicate `DISMISS_BANNER` IPC handler** — `UpdaterBanner.ts:36` + `updater.ipc.ts:11`. Single registration point.
 
 ### Code Quality
@@ -42,25 +42,25 @@
 - [ ] **H10. IPC handlers inline in main.ts** — `video:fetch`, `subtitle:*`, `episode:*`, `cache:setCurrentEpisode`. Move to dedicated `.ipc.ts` files.
 
 ### Test & CI
-- [ ] **H11. 26 test failures** — `better-sqlite3` ABI mismatch. Add `"pretest": "npm rebuild better-sqlite3"` to package.json.
+- [x] **H11. 26 test failures** — Fixed with `pretest` script that rebuilds better-sqlite3 for Node ABI.
 - [ ] **H12. 14 source files have no tests** — All IPC handlers untested. Write tests for at least IPC handlers.
-- [ ] **H13. No CI workflow for PRs** — Only release-tag workflow exists. Add `ci.yml` for lint + test on push/PR.
-- [ ] **H14. jassub LGPL components** — Needs NOTICE file documenting LGPL-2.1 (libass) and FreeType.
+- [x] **H13. No CI workflow for PRs** — Added `ci.yml` for lint + test on push/PR to main.
+- [x] **H14. jassub LGPL components** — NOTICE file created with jassub (LGPL-2.1) and abp-filter-parser (MPL-2.0).
 - [ ] **H15. Linting stack outdated** — `@typescript-eslint/*` 5.x (latest 8.x), `eslint` 8.x (latest 10.x).
 
 ## MEDIUM
 
-- [ ] **M1. `abp-filter-parser` MPL-2.0** — Document in NOTICE file
-- [ ] **M2. No CONTRIBUTING.md**
-- [ ] **M3. No CODE_OF_CONDUCT.md**
-- [ ] **M4. No GitHub issue/PR templates**
+- [x] **M1. `abp-filter-parser` MPL-2.0** — Documented in NOTICE file
+- [x] **M2. No CONTRIBUTING.md** — Created with dev setup, code style, architecture rules, PR process
+- [x] **M3. No CODE_OF_CONDUCT.md** — Added Contributor Covenant v2.1
+- [x] **M4. No GitHub issue/PR templates** — Added bug report, feature request, and PR templates
 - [ ] **M5. `electron-rebuild` deprecated** — Replace with `@electron/rebuild`
 - [ ] **M6. `vite` 3 major versions behind**
 - [!] **M7. `sandbox: false` in UpdaterBanner** — `UpdaterBanner.ts:53`. Test with `sandbox: true` on Electron 41.
 - [x] **M8. `.gitignore` incomplete** — Added `.env*`, `*.db`, `coverage/`, `.DS_Store`, `assets/library/` etc.
 - [ ] **M9. 37 lint errors** — Mostly `any` in test files
-- [ ] **M10. No `.editorconfig`**
-- [ ] **M11. `package.json` description is placeholder** — "My Electron application description"
+- [x] **M10. No `.editorconfig`** — Added with 2-space indent, LF, UTF-8
+- [x] **M11. `package.json` description is placeholder** — Updated with real description + keywords
 - [ ] **M12. Turkish UI strings inconsistent diacritics** — `Yukleniyor` vs `Yükleniyor`
 - [ ] **M13. `postMessage` without origin validation** — `useParentMessages.ts:8`. Low risk in Electron but add check as defense-in-depth.
 - [ ] **M14. No IPC rate limiting** — Sensitive handlers could be flooded if website is compromised.
