@@ -113,10 +113,12 @@ jobs:
         shell: bash
         run: npx @electron/rebuild -f -w better-sqlite3
 
-      # Build the React-based player page into assets/player/.
-      # Forge's packagerConfig.extraResource references this directory.
+      # Build React pages into assets/. Forge extraResource references these.
       - name: Build player page
         run: npm run build:player
+
+      - name: Build library page
+        run: npm run build:library
 
       - name: Make macOS (universal, signed, notarize gated by SKIP_NOTARIZE)
         if: matrix.os == 'macos-14'
