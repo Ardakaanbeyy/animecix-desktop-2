@@ -42,13 +42,15 @@ export function matchesHeaderRule(
       //   2. Escape all regex special chars (including dots)
       //   3. Replace scheme wildcard placeholder (___STAR___://) with [a-z]+://
       //   4. Replace remaining placeholders with .*
+      //   5. Make subdomain wildcard optional (*.domain matches bare domain too)
       const regexStr =
         '^' +
         pattern
           .replace(/\*/g, '___STAR___')
           .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
           .replace(/___STAR___:\/\//g, '[a-z]+://')
-          .replace(/___STAR___/g, '.*') +
+          .replace(/___STAR___/g, '.*')
+          .replace(/:\/\/\.\*\\\./g, '://(.*\\.)?') +
         '$';
       const regex = new RegExp(regexStr);
       if (regex.test(url)) return rule;
