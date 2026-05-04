@@ -7,8 +7,11 @@ import * as ABPFilterParser from 'abp-filter-parser';
  * Pure function: returns true if the URL is a first-party domain that
  * should never be blocked (animecix.tv or tau-video.xyz).
  */
+const SITE_DOMAIN = new URL(import.meta.env.VITE_SITE_URL).hostname;
+const CDN_DOMAIN = import.meta.env.VITE_CDN_DOMAIN;
+
 export function isWhitelisted(url: string): boolean {
-  return url.includes('animecix.tv') || url.includes('tau-video.xyz');
+  return url.includes(SITE_DOMAIN) || url.includes(CDN_DOMAIN);
 }
 
 /**

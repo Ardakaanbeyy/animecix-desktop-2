@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   root: path.resolve(__dirname, 'src/player-page'),
+  envDir: path.resolve(__dirname),
   base: '/',
   plugins: [react()],
   optimizeDeps: {

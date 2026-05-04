@@ -1,5 +1,31 @@
 node_modules/
 .vite/
 out/
+dist/
 assets/player/
+assets/library/
 dev-app-update.yml
+
+# Environment variables (real values — never commit)
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+
+# Build artifacts
+*.dmg
+*.exe
+*.nupkg
+
+# Database files
+*.db
+*.sqlite

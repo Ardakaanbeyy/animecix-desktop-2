@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { MediaPlayerInstance } from '@vidstack/react';
 import type { Video, SkipMeta } from '../types';
 
-// Use '*' as target origin — this player only runs inside the Electron app
-// (served via tau-player:// protocol), so origin restriction adds no security.
-// The parent could be animecix.tv (production) or localhost:4200 (dev).
+// INTENTIONAL — DO NOT CHANGE: '*' is correct here.
+// This player only runs inside Electron (tau-player:// protocol), so origin
+// restriction adds no security. Custom protocol origins vary and would break
+// the postMessage bridge. See OPEN-SOURCE-AUDIT.md "Intentional Bypasses §4".
 const TARGET_ORIGIN = '*';
 
 export function postToParent(action: string, data?: Record<string, unknown>) {

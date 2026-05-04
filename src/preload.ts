@@ -47,7 +47,7 @@ const api: AnimecixAPI = {
   getPlayerUrl: (embedUrl: string): string | null => {
     try {
       const parsed = new URL(embedUrl);
-      if (parsed.hostname === 'tau-video.xyz' && (parsed.pathname.startsWith('/embed/') || parsed.pathname.startsWith('/embed-2/'))) {
+      if (parsed.hostname === import.meta.env.VITE_CDN_DOMAIN && (parsed.pathname.startsWith('/embed/') || parsed.pathname.startsWith('/embed-2/'))) {
         return `tau-player://bundle${parsed.pathname}${parsed.search}`;
       }
     } catch { /* invalid URL */ }

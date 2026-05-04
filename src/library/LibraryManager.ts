@@ -19,7 +19,7 @@ export class LibraryManager {
   hide(): void {
     if (!this.active) return;
     this.active = false;
-    void this.mainWindow.loadURL('https://animecix.tv');
+    void this.mainWindow.loadURL(import.meta.env.VITE_SITE_URL);
     log.info('[library] Navigated mainWindow back to website');
   }
 

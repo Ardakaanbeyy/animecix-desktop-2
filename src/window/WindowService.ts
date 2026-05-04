@@ -69,7 +69,10 @@ export function createWindow(storage: StorageService): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      webSecurity: false, // Allow cross-origin video canvas access (color extraction)
+      // INTENTIONAL — DO NOT CHANGE: required for cross-origin video canvas color extraction.
+      // The player streams from CDN; canvas.getImageData() needs this to avoid tainted-canvas errors.
+      // See OPEN-SOURCE-AUDIT.md "Intentional Bypasses §1" for full rationale.
+      webSecurity: false,
       preload: path.join(__dirname, 'preload.js'),
     },
   };
@@ -102,9 +105,9 @@ export function createWindow(storage: StorageService): BrowserWindow {
     win.show();
   });
 
-  // Dev: load local Angular dev server; Production: load animecix.tv
+  // Dev: load local Angular dev server; Production: load website
   const startUrl = app.isPackaged
-    ? 'https://animecix.tv'
+    ? import.meta.env.VITE_SITE_URL
     : 'http://localhost:4200';
   void win.loadURL(startUrl);
 

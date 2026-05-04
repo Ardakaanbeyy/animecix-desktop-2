@@ -1,6 +1,6 @@
 import { Client } from '@xhayper/discord-rpc';
 
-export const CLIENT_ID = '921684324141641728';
+export const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
 
 export interface EpisodeData {
   title: string;

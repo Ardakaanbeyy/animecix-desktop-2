@@ -265,7 +265,7 @@ if (!gotLock) {
     // avoiding the player's own API fetch and cutting load time.
     ipcMain.handle('video:fetch', async (_event, id: string, vid?: string) => {
       try {
-        const videoUrl = 'https://tau-video.xyz/api/video/' + id + (vid ? '?vid=' + vid : '');
+        const videoUrl = import.meta.env.VITE_API_BASE_URL + '/api/video/' + id + (vid ? '?vid=' + vid : '');
         const videoRes = await net.fetch(videoUrl);
         const video = await videoRes.json();
 
@@ -274,7 +274,7 @@ if (!gotLock) {
         if (video.title_id && video.season_number && video.episode_number) {
           const slug = video.title_id + '_' + video.season_number + '_' + video.episode_number + '_' + video.translator;
           try {
-            const metaRes = await net.fetch('https://tau-video.xyz/api/most-sought/' + slug + '?tauId=' + video._id);
+            const metaRes = await net.fetch(import.meta.env.VITE_API_BASE_URL + '/api/most-sought/' + slug + '?tauId=' + video._id);
             meta = await metaRes.json();
           } catch {
             // Skip markers not available — non-fatal

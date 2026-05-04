@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // Known video CDN domains for transparent caching filter (T-03-17)
-const VIDEO_CDN_DOMAINS = ['tau-video.xyz'];
+const VIDEO_CDN_DOMAINS = [import.meta.env.VITE_CDN_DOMAIN];
 
 /**
  * Check if a URL is a video segment from a known CDN domain.

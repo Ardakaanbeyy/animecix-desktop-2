@@ -10,17 +10,19 @@ export interface HeaderRule {
 export const FIREFOX_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:70.0) Gecko/20100101 Firefox/70.0';
 
+const CDN = import.meta.env.VITE_CDN_DOMAIN;
+
 export const HEADER_RULES: HeaderRule[] = [
   {
-    urlPatterns: ['*://*.tau-video.xyz/file/*'],
-    headers: { referer: 'https://tau-video.xyz/', userAgent: FIREFOX_UA },
+    urlPatterns: [`*://*.${CDN}/file/*`],
+    headers: { referer: `https://${CDN}/`, userAgent: FIREFOX_UA },
     purpose:
       'Video file CDN -- needs referer from embed page and Firefox UA to authorize',
   },
   {
-    urlPatterns: ['*://*.tau-video.xyz/api/*'],
-    headers: { referer: 'https://tau-video.xyz/' },
-    purpose: 'Tau-video API requests -- needs referer for auth',
+    urlPatterns: [`*://*.${CDN}/api/*`],
+    headers: { referer: `https://${CDN}/` },
+    purpose: 'API requests -- needs referer for auth',
   },
 ];
 

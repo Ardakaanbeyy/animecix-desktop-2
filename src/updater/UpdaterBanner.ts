@@ -50,7 +50,9 @@ export class UpdaterBanner {
         preload: preloadPath,
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false, // required for preload contextBridge
+        // INTENTIONAL: sandbox: false is needed for preload contextBridge in this BrowserView.
+        // See OPEN-SOURCE-AUDIT.md "Intentional Bypasses §3".
+        sandbox: false,
       },
     });
 

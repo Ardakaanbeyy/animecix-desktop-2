@@ -1,7 +1,9 @@
 import { AdBlocker } from './ad-blocker';
 
 // First-party domains that must never be blocked
-const WHITELIST_PATTERNS = ['animecix.tv', 'tau-video.xyz', 'localhost'];
+const SITE_DOMAIN = new URL(import.meta.env.VITE_SITE_URL).hostname;
+const CDN_DOMAIN = import.meta.env.VITE_CDN_DOMAIN;
+const WHITELIST_PATTERNS = [SITE_DOMAIN, CDN_DOMAIN, 'localhost'];
 
 /**
  * Pure function: returns true if the URL should be redirected from the
@@ -9,9 +11,10 @@ const WHITELIST_PATTERNS = ['animecix.tv', 'tau-video.xyz', 'localhost'];
  * Only matches https://tau-video.xyz/embed/* and https://tau-video.xyz/embed-2/*
  */
 export function isIframeRedirect(url: string): boolean {
+  const base = import.meta.env.VITE_API_BASE_URL;
   return (
-    url.startsWith('https://tau-video.xyz/embed/') ||
-    url.startsWith('https://tau-video.xyz/embed-2/')
+    url.startsWith(base + '/embed/') ||
+    url.startsWith(base + '/embed-2/')
   );
 }
 

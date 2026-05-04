@@ -72,7 +72,7 @@ export function EmbedPlayer() {
   const tracks = (data?.subs || []).map((sub) => ({
     kind: 'subtitles' as const,
     label: regionNamesInTurkish.of(sub.language) + ' - ' + sub.name,
-    src: isIOS ? 'https://tau-video.xyz/vtt/' + sub.id : sub.url,
+    src: isIOS ? import.meta.env.VITE_API_BASE_URL + '/vtt/' + sub.id : sub.url,
     language: sub.language,
     type: (isIOS ? 'vtt' : 'ass') as 'vtt' | 'ass',
   }));
@@ -209,7 +209,8 @@ export function EmbedPlayer() {
 
   function onEnded() {
     if (isOffline && offlineNav?.nextEpisodeId) {
-      (window as any).animecix?.playOfflineEpisode?.(offlineNav.nextEpisodeId);
+      // INTENTIONAL `any` — offline player has no preload bridge. See OPEN-SOURCE-AUDIT.md §2.
+      (window as any).animecix?.playOfflineEpisode?.(offlineNav.nextEpisodeId); // eslint-disable-line @typescript-eslint/no-explicit-any
       return;
     }
     postToParent('ended');
@@ -252,6 +253,8 @@ export function EmbedPlayer() {
 
   return (
     <>
+      {/* INTENTIONAL `any` casts below — offline player has no preload bridge.
+          See OPEN-SOURCE-AUDIT.md "Intentional Bypasses §2". */}
       {isOffline && (
         <div className="offline-header">
           <button
@@ -330,7 +333,7 @@ export function EmbedPlayer() {
         <DefaultVideoLayout
           icons={defaultLayoutIcons}
           translations={turkishTranslations}
-          thumbnails={isOffline ? undefined : 'https://tau-video.xyz/preview/' + id}
+          thumbnails={isOffline ? undefined : import.meta.env.VITE_API_BASE_URL + '/preview/' + id}
           playbackRates={[0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4]}
         />
         <SkipButton meta={meta} />

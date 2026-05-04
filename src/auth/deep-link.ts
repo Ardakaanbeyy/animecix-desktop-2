@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { WebContents } from 'electron';
 
 const ANIMECIX_SCHEME = 'animecix://';
-const CALLBACK_BASE = 'https://animecix.tv/secure/short-login/';
+const CALLBACK_BASE = import.meta.env.VITE_SITE_URL + '/secure/short-login/';
 
 /**
  * Register animecix:// as the default protocol client for this app.

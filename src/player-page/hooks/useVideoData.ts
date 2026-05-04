@@ -32,7 +32,7 @@ export function useVideoData(initialId: string, initialVid?: string) {
 
     try {
       const url =
-        'https://tau-video.xyz/api/video/' + id + (vid ? '?vid=' + vid : '');
+        import.meta.env.VITE_API_BASE_URL + '/api/video/' + id + (vid ? '?vid=' + vid : '');
       const res = await fetch(url);
       const videoData: Video = await res.json();
 
@@ -51,7 +51,7 @@ export function useVideoData(initialId: string, initialVid?: string) {
 
       try {
         const metaRes = await fetch(
-          'https://tau-video.xyz/api/most-sought/' +
+          import.meta.env.VITE_API_BASE_URL + '/api/most-sought/' +
             slug +
             '?tauId=' +
             videoData._id
@@ -83,7 +83,10 @@ export function useVideoData(initialId: string, initialVid?: string) {
   // pre-fetched data arrives via postMessage before the API responds
   useEffect(() => {
     if (initialId === 'offline') {
-      (window as any).animecix?.getOfflineVideoData?.().then((result: any) => {
+      // INTENTIONAL `any` cast — player runs under tau-player:// with no access to the
+      // preload bridge types. This is the only IPC path for offline playback.
+      // See OPEN-SOURCE-AUDIT.md "Intentional Bypasses §2".
+      (window as any).animecix?.getOfflineVideoData?.().then((result: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         if (result?.video) {
           setPrefetchedData(result.video, result.skipMeta ?? null);
           if (result.navigation) {

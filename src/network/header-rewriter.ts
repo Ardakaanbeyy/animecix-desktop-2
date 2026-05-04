@@ -1,11 +1,12 @@
 import { HEADER_RULES, matchesHeaderRule } from './header-rules';
 
 /**
+ * INTENTIONAL — DO NOT REMOVE: CDN header rewriting is the designed auth mechanism.
+ * Without these headers, video playback fails with 403. This is not a hack.
+ * See OPEN-SOURCE-AUDIT.md "Intentional Bypasses §5".
+ *
  * Registers the onBeforeSendHeaders handler for CDN header rewriting.
  * This is separate from onBeforeRequest and can coexist with it.
- *
- * Applies referer and user-agent headers for tau-video.xyz CDN requests
- * so video streams are authorized by the CDN.
  */
 export function setupHeaderRewriter(): void {
   // Guard: only run in Electron environment
@@ -44,10 +45,11 @@ export function setupHeaderRewriter(): void {
     }
   );
 
-  // Fix CORS for the built-in player (tau-player:// origin).
+  // INTENTIONAL CORS override for the built-in player (tau-player:// origin).
   // Video CDNs return Access-Control-Allow-Origin: null which doesn't match
   // tau-player://bundle, so the browser blocks the response.
   // Only override when the existing value would block the request.
+  // DO NOT REMOVE — video playback breaks without this.
   session.defaultSession.webRequest.onHeadersReceived(
     (
       details: Electron.OnHeadersReceivedListenerDetails,

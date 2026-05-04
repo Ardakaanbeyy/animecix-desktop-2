@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   root: path.resolve(__dirname, 'src/library-page'),
+  envDir: path.resolve(__dirname),
   base: '/',
   plugins: [react()],
   build: {
