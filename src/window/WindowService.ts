@@ -144,7 +144,9 @@ export function createWindow(storage: StorageService): BrowserWindow {
     return { action: 'deny' };
   });
 
-  // Restrict navigation to trusted origins only
+  // Restrict navigation to trusted origins — allow OAuth providers for Google login flow.
+  // Google login: animecix.tv opens accounts.google.com, user authenticates,
+  // Google redirects to animecix:// deeplink, app handles it via deep-link.ts.
   const SITE_HOST = new URL(import.meta.env.VITE_SITE_URL).hostname;
   win.webContents.on('will-navigate', (event, url) => {
     try {
@@ -152,6 +154,8 @@ export function createWindow(storage: StorageService): BrowserWindow {
       const isTrusted =
         parsed.hostname === SITE_HOST ||
         parsed.hostname === 'localhost' ||
+        parsed.hostname === 'accounts.google.com' ||
+        parsed.hostname.endsWith('.google.com') ||
         parsed.protocol === 'tau-player:' ||
         parsed.protocol === 'animecix-library:' ||
         parsed.protocol === 'animecix-offline:';

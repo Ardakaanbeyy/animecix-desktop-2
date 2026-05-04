@@ -5,11 +5,14 @@ interface Props {
 }
 
 const isMac = navigator.platform.startsWith('Mac');
+const isWindows = navigator.platform.startsWith('Win');
+const WINDOWS_TITLEBAR_HEIGHT = 40;
 
 export function InternetBanner({ onGoToWebsite }: Props) {
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
+      position: 'fixed', top: isWindows ? WINDOWS_TITLEBAR_HEIGHT : 0,
+      left: 0, right: 0, zIndex: 1000,
       height: 48, background: '#1f2937',
       borderBottom: '1px solid rgba(255,255,255,0.08)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
