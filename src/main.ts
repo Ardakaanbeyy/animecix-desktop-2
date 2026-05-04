@@ -7,7 +7,7 @@ import { registerOfflineProtocol } from './offline/offline-protocol';
 import './library/library-protocol'; // Side-effect: registers animecix-library:// scheme privileges
 import { registerLibraryProtocol } from './library/library-protocol';
 
-import { app, BrowserWindow, ipcMain, net } from 'electron';
+import { app, BrowserWindow, net } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { StorageService } from './storage/StorageService';
@@ -21,11 +21,14 @@ import {
   extractDeepLinkFromArgs,
   handleDeepLink,
 } from './auth/deep-link';
-import { DiscordService, EpisodeData } from './integrations/discord-rpc';
+import { DiscordService } from './integrations/discord-rpc';
+import { registerDiscordIpc } from './integrations/discord.ipc';
 import { DownloadQueue } from './download/DownloadQueue';
 import { StreamCache } from './cache/StreamCache';
 import { CacheEvictor } from './cache/CacheEvictor';
 import { registerDownloadIpc } from './download/download.ipc';
+import { registerCacheIpc } from './cache/cache.ipc';
+import { registerPlayerIpc } from './player/player.ipc';
 import { TrayManager } from './download/TrayManager';
 import { UpdaterService } from './updater/UpdaterService';
 import { registerUpdaterIpc } from './updater/updater.ipc';
@@ -45,13 +48,6 @@ let trayManager: TrayManager | null = null;
 let updaterService: UpdaterService | null = null;
 let updaterBanner: UpdaterBanner | null = null;
 let libraryManager: LibraryManager | null = null;
-
-// --- Episode metadata state for Discord RPC play state updates ---
-// animecix.tv is the bridge between the player iframe (postMessage) and main process (IPC).
-// The player iframe (tau-player://) CANNOT access window.animecix (Electron IPC).
-// animecix.tv receives currentTime + captionsChanged postMessages from the player iframe,
-// then forwards episode metadata and play state to main via IPC.
-let lastEpisodeData: Omit<EpisodeData, 'isPlaying' | 'startTimestamp'> | null = null;
 
 // Register deep link protocol BEFORE app.ready (required by Electron)
 registerDeepLinkProtocol();
@@ -121,16 +117,8 @@ if (!gotLock) {
     // Transparent auto-caching: intercept completed video requests (PLAY-05, D-05)
     cache.setupTransparentCaching(mainWindow.webContents.session);
 
-    // Wire episode lifecycle for transparent caching
-    let currentCachingEpisodeId: string | null = null;
-
-    ipcMain.handle('cache:setCurrentEpisode', async (_event, episodeId: string, subs: { language: string; url: string }[]) => {
-      if (currentCachingEpisodeId && currentCachingEpisodeId !== episodeId) {
-        cache.finalizeEpisodeCache(currentCachingEpisodeId);
-      }
-      currentCachingEpisodeId = episodeId;
-      cache.setCurrentEpisode(episodeId, subs);
-    });
+    // Register cache episode lifecycle IPC
+    registerCacheIpc(cache);
 
     // Register download/cache/storage IPC handlers
     registerDownloadIpc(mainWindow, queue, cache, storage, evictor, downloadsDir, cacheDir);
@@ -259,75 +247,11 @@ if (!gotLock) {
       });
     }
 
-    // --- Video data pre-fetch IPC ---
-    // Website calls this to fetch video data via main process (no CORS, faster than renderer fetch).
-    // Returns { video, meta } so the website can pass it to the player iframe via postMessage,
-    // avoiding the player's own API fetch and cutting load time.
-    ipcMain.handle('video:fetch', async (_event, id: string, vid?: string) => {
-      try {
-        const videoUrl = import.meta.env.VITE_API_BASE_URL + '/api/video/' + id + (vid ? '?vid=' + vid : '');
-        const videoRes = await net.fetch(videoUrl);
-        const video = await videoRes.json();
+    // Register video:fetch and subtitle preference IPC handlers
+    registerPlayerIpc(storage);
 
-        // Fetch skip markers in parallel
-        let meta = null;
-        if (video.title_id && video.season_number && video.episode_number) {
-          const slug = video.title_id + '_' + video.season_number + '_' + video.episode_number + '_' + video.translator;
-          try {
-            const metaRes = await net.fetch(import.meta.env.VITE_API_BASE_URL + '/api/most-sought/' + slug + '?tauId=' + video._id);
-            meta = await metaRes.json();
-          } catch {
-            // Skip markers not available — non-fatal
-          }
-        }
-
-        return { video, meta };
-      } catch (err) {
-        console.error('video:fetch failed:', err);
-        return null;
-      }
-    });
-
-    // --- Subtitle preference IPC (Phase 2 — BLOCKER 2 fix) ---
-    // animecix.tv calls these IPC channels (not the player iframe).
-    // On episode load: animecix.tv calls getSubtitlePref -> gets saved lang
-    //   -> sends changeSub postMessage to player iframe to apply the preference.
-    // On caption change: player iframe sends captionsChanged postMessage to animecix.tv
-    //   -> animecix.tv calls setSubtitlePref to persist the new preference to SQLite.
-    ipcMain.handle('subtitle:get', (_event, animeId: string) => {
-      return storage?.getSubtitlePref(animeId) ?? 'tr';
-    });
-    ipcMain.handle('subtitle:set', (_event, animeId: string, language: string) => {
-      storage?.setSubtitlePref(animeId, language);
-    });
-
-    // --- Episode metadata IPC for Discord RPC (Phase 2 — BLOCKER 1 fix) ---
-    // animecix.tv is the bridge: it receives postMessages from the player iframe and
-    // forwards episode metadata and play state to main process via these IPC channels.
-    //
-    // episode:update — sent by animecix.tv on episode change (richer than legacy 'updateCurrent')
-    ipcMain.on('episode:update', (_event, data: Omit<EpisodeData, 'isPlaying' | 'startTimestamp'>) => {
-      lastEpisodeData = data;
-      discord?.updateActivity({ ...data, isPlaying: true, startTimestamp: Date.now() });
-    });
-
-    // episode:playState — sent by animecix.tv when it receives currentTime postMessage from
-    // the player iframe (currentTime postMessage contains {time, duration, isPlaying} every 5s)
-    ipcMain.on('episode:playState', (_event, isPlaying: boolean) => {
-      if (lastEpisodeData) {
-        discord?.updateActivity({
-          ...lastEpisodeData,
-          isPlaying,
-          startTimestamp: isPlaying ? Date.now() : undefined,
-        });
-      }
-    });
-
-    // episode:idle — sent when player is closed or navigated away from
-    ipcMain.on('episode:idle', () => {
-      lastEpisodeData = null;
-      discord?.setIdle();
-    });
+    // Register Discord RPC episode lifecycle IPC handlers
+    registerDiscordIpc(() => discord);
   }).catch((err) => {
     console.error('Failed to initialize app:', err);
     app.quit();

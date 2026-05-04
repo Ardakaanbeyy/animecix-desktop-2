@@ -81,6 +81,25 @@ Some patterns in the codebase look like bugs but are intentional architectural d
 - CDN header rewriting in header-rewriter.ts
 - `(window as any).animecix` casts in the player page (offline mode)
 
+## Scope of This Repository
+
+This repo contains **only the Electron desktop shell**. The main website (animecix.tv) is a separate Angular application loaded inside the Electron BrowserWindow at runtime.
+
+If your change requires modifications to the website (e.g., new postMessage channels, changes to the `window.animecix` API contract, UI changes in the Angular app), please **open an issue first** describing the cross-repo dependency. Website changes are coordinated separately and must be deployed before or alongside the desktop release.
+
+Things that live in this repo:
+- Main process services (download, cache, storage, updater, etc.)
+- Preload bridge (`preload.ts` + `AnimecixAPI` contract)
+- Player page (React — `src/player-page/`)
+- Library page (React — `src/library-page/`)
+- Protocol handlers, network layer, IPC handlers
+
+Things that live in the website repo (NOT here):
+- Angular components, routes, and pages
+- `window.animecix` call sites in the website
+- postMessage sender/receiver logic on the website side
+- Website-side UI (navbar, episode pages, etc.)
+
 ## Questions?
 
 Open an issue if you have questions about the codebase or need guidance on where to start.

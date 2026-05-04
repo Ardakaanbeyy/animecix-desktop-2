@@ -35,7 +35,7 @@
 ### Bugs
 - [x] **H6. Duplicate `window-all-closed` handler** — Removed from WindowService.ts. main.ts handler is now the single point.
 - [x] **H7. URL mutation race condition** — URL is now passed as parameter to downloadChunk, no more this.url mutation.
-- [ ] **H8. Duplicate `DISMISS_BANNER` IPC handler** — `UpdaterBanner.ts:36` + `updater.ipc.ts:11`. Single registration point.
+- [!] **H8. Dual `DISMISS_BANNER` IPC listeners** — `UpdaterBanner.ts:36` (hides UI) + `updater.ipc.ts:11` (suppresses re-show). **INTENTIONAL**: different concerns — one removes the BrowserView, the other sets `bannerDismissedThisSession`. Both fire via `ipcMain.on` which supports multiple listeners.
 
 ### Code Quality
 - [ ] **H9. `any` types in 6+ locations** — `library.ipc.ts:22`, `useVideoData.ts:86-87`, `EmbedPlayer.tsx:212+`. Define interfaces or use `unknown`.

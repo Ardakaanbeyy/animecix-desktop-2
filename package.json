@@ -28,11 +28,19 @@
     "test": "vitest run --reporter=dot",
     "build:player": "vite build --config vite.player.config.mts",
     "build:library": "vite build --config vite.library.config.mts",
-    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "npx @electron/rebuild -f -w better-sqlite3",
     "verify-tag": "node scripts/verify-tag.mjs",
     "generate-update-manifest": "node scripts/generate-update-manifest.mjs"
   },
-  "keywords": ["electron", "anime", "streaming", "desktop", "video-player", "offline", "hls"],
+  "keywords": [
+    "electron",
+    "anime",
+    "streaming",
+    "desktop",
+    "video-player",
+    "offline",
+    "hls"
+  ],
   "author": {
     "name": "CaptainSP",
     "email": "19982002ke@gmail.com"
@@ -51,6 +59,7 @@
     "@electron-forge/plugin-vite": "^7.11.1",
     "@electron-forge/publisher-github": "^7.11.1",
     "@electron/fuses": "^1.8.0",
+    "@electron/rebuild": "^4.0.4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/react": "^19.2.14",
@@ -60,7 +69,6 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.4",
     "electron": "41.2.0",
-    "electron-rebuild": "^3.2.9",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
     "typescript": "^5.9.3",
