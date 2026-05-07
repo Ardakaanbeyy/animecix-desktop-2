@@ -84,8 +84,6 @@ export class DebandPipeline implements Anime4KPipeline {
   private device: GPUDevice;
   private width: number;
   private height: number;
-  private frameCount = 0;
-
   constructor({ device, inputTexture }: { device: GPUDevice; inputTexture: GPUTexture }) {
     this.device = device;
     this.width = inputTexture.width;
@@ -101,7 +99,7 @@ export class DebandPipeline implements Anime4KPipeline {
       size: 16,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(this.paramsBuffer, 0, new Float32Array([35, 16, 4, 0]));
+    device.queue.writeBuffer(this.paramsBuffer, 0, new Float32Array([35, 16, 0, 0]));
 
     const module = device.createShaderModule({ code: DEBAND_SHADER_WGSL });
 
@@ -130,19 +128,11 @@ export class DebandPipeline implements Anime4KPipeline {
 
   updateParam(param: string, value: number): void {
     if (param === 'threshold') {
-      const current = new Float32Array(4);
-      current[0] = value;
-      current[1] = 16;
-      current[2] = 4;
-      current[3] = this.frameCount;
-      this.device.queue.writeBuffer(this.paramsBuffer, 0, current);
+      this.device.queue.writeBuffer(this.paramsBuffer, 0, new Float32Array([value, 16, 0, 0]));
     }
   }
 
   pass(encoder: GPUCommandEncoder): void {
-    this.frameCount++;
-    this.device.queue.writeBuffer(this.paramsBuffer, 12, new Float32Array([this.frameCount % 1000]));
-
     const pass = encoder.beginComputePass();
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.bindGroup);

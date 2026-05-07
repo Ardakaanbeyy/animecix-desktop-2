@@ -66,7 +66,7 @@ fn computeMain(@builtin(global_invocation_id) pixel: vec3u) {
 export const DEBAND_SHADER_WGSL = /* wgsl */ `
 @group(0) @binding(0) var tex_in: texture_2d<f32>;
 @group(0) @binding(1) var tex_out: texture_storage_2d<rgba16float, write>;
-@group(0) @binding(2) var<uniform> params: vec4f; // threshold, range, grain, frameCount
+@group(0) @binding(2) var<uniform> params: vec4f; // threshold, range, unused, unused
 
 fn hash(p: vec2f) -> f32 {
   return fract(sin(dot(p, vec2f(12.9898, 78.233))) * 43758.5453);
@@ -79,14 +79,13 @@ fn computeMain(@builtin(global_invocation_id) pixel: vec3u) {
 
   let threshold = params.x / 255.0;
   let range_val = params.y;
-  let grain = params.z / 255.0;
-  let frame_seed = params.w;
 
   let center = textureLoad(tex_in, pixel.xy, 0);
   var avg = center;
   var count = 1.0;
 
-  let seed_base = vec2f(f32(pixel.x), f32(pixel.y)) + vec2f(frame_seed * 1.3, frame_seed * 0.7);
+  // Fixed seed per pixel — no per-frame variation to prevent temporal flickering
+  let seed_base = vec2f(f32(pixel.x), f32(pixel.y));
 
   for (var i = 0u; i < 4u; i++) {
     let angle = hash(seed_base + vec2f(f32(i) * 3.17, f32(i) * 7.23)) * 6.283185;
@@ -102,11 +101,7 @@ fn computeMain(@builtin(global_invocation_id) pixel: vec3u) {
     }
   }
 
-  var result = avg.rgb / count;
-
-  let noise = (hash(seed_base + vec2f(0.5, 0.5)) - 0.5) * grain;
-  result += vec3f(noise);
-
+  let result = avg.rgb / count;
   textureStore(tex_out, pixel.xy, vec4f(clamp(result, vec3f(0.0), vec3f(1.0)), center.a));
 }
 `;

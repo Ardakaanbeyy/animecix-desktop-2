@@ -131,13 +131,19 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
 
       let frameCount = 0;
       let fpsTime = performance.now();
+      let lastMediaTime = -1;
 
-      const loop = () => {
+      const loop: VideoFrameRequestCallback = (_now, metadata) => {
         if (!session.running) return;
 
-        try {
-          const t0 = performance.now();
+        // Skip if same video frame — prevents temporal flickering on static shots
+        if (metadata.mediaTime === lastMediaTime) {
+          video.requestVideoFrameCallback(loop);
+          return;
+        }
+        lastMediaTime = metadata.mediaTime;
 
+        try {
           device.queue.copyExternalImageToTexture(
             { source: video },
             { texture: inputTexture },
@@ -249,7 +255,7 @@ function buildPipelines(
     const upscale = new anime4k.CNNx2M({ device, inputTexture: prev });
     prev = upscale.getOutputTexture();
     const cas = new CASPipeline({ device, inputTexture: prev });
-    cas.updateParam('strength', 0.4);
+    cas.updateParam('strength', 0.25);
     return [clamp, upscale, cas];
   }
 
@@ -262,7 +268,7 @@ function buildPipelines(
     const upscale = new anime4k.CNNx2M({ device, inputTexture: prev });
     prev = upscale.getOutputTexture();
     const cas = new CASPipeline({ device, inputTexture: prev });
-    cas.updateParam('strength', 0.5);
+    cas.updateParam('strength', 0.3);
     return [clamp, deband, restore, upscale, cas];
   }
 
@@ -276,6 +282,6 @@ function buildPipelines(
   const upscale = new anime4k.CNNx2M({ device, inputTexture: prev });
   prev = upscale.getOutputTexture();
   const cas = new CASPipeline({ device, inputTexture: prev });
-  cas.updateParam('strength', 0.6);
+  cas.updateParam('strength', 0.35);
   return [clamp, deband, restore1, restore2, upscale, cas];
 }
