@@ -11,7 +11,8 @@ export function getPlayerPort(): number {
     return resolvedPort;
 }
 
-export function getPlayerBaseUrl(): string {
+export function getPlayerBaseUrl(): string | null {
+    if (!resolvedPort) return null;
     return `http://tau-player.localhost:${resolvedPort}`;
 }
 
