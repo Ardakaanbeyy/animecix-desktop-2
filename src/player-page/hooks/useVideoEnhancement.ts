@@ -81,14 +81,8 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
 
     const nativeW = video.videoWidth;
     const nativeH = video.videoHeight;
-    const videoRatio = nativeW / nativeH;
-    const dpr = window.devicePixelRatio || 1;
-    const maxW = Math.round(window.screen.width * dpr);
-    const maxH = Math.round(window.screen.height * dpr);
-    let canvasW = nativeW * 2;
-    let canvasH = nativeH * 2;
-    if (canvasW > maxW) { canvasW = maxW; canvasH = Math.round(canvasW / videoRatio); }
-    if (canvasH > maxH) { canvasH = maxH; canvasW = Math.round(canvasH * videoRatio); }
+    const canvasW = nativeW * 2;
+    const canvasH = nativeH * 2;
     const resolution = `${nativeW}x${nativeH} → ${canvasW}x${canvasH}`;
 
     const canvas = document.createElement('canvas');
