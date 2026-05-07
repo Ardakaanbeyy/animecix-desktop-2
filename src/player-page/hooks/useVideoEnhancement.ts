@@ -36,6 +36,8 @@ struct VO { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
 interface Session {
   device: GPUDevice;
   running: boolean;
+  videoWidth: number;
+  videoHeight: number;
 }
 
 function loadPreset(): UpscalePreset {
@@ -56,6 +58,7 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
   const [stats, setStats] = useState<EnhancementStats>({ fps: 0, outputLabel: '', performance: null });
   const [panelOpen, setPanelOpen] = useState(false);
   const sessionRef = useRef<Session | null>(null);
+  const presetRef = useRef<UpscalePreset>(loadPreset());
 
   const isActive = preset !== 'off';
 
@@ -81,9 +84,10 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
 
     const nativeW = video.videoWidth;
     const nativeH = video.videoHeight;
+    if (!nativeW || !nativeH) return;
+
     const canvasW = nativeW * 2;
     const canvasH = nativeH * 2;
-
     const outputLabel = canvasH >= 2160 ? '4K' : canvasH >= 1440 ? '2K' : `${canvasH}p`;
 
     const canvas = document.createElement('canvas');
@@ -97,7 +101,7 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
       if (!adapter) return;
       const device = await adapter.requestDevice();
 
-      const session: Session = { device, running: true };
+      const session: Session = { device, running: true, videoWidth: nativeW, videoHeight: nativeH };
       sessionRef.current = session;
 
       const format = navigator.gpu.getPreferredCanvasFormat();
@@ -136,7 +140,13 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
       const loop: VideoFrameRequestCallback = (_now, metadata) => {
         if (!session.running) return;
 
-        // Skip if same video frame — prevents temporal flickering on static shots
+        // Detect video source change (seamless episode transition) — restart pipeline
+        if (video.videoWidth !== session.videoWidth || video.videoHeight !== session.videoHeight) {
+          session.running = false;
+          startRendering(presetRef.current);
+          return;
+        }
+
         if (metadata.mediaTime === lastMediaTime) {
           video.requestVideoFrameCallback(loop);
           return;
@@ -191,6 +201,57 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
     }
   }, [containerRef, destroySession]);
 
+  // Restart on fullscreen change — canvas/context can become stale
+  useEffect(() => {
+    if (!isActive) return;
+    const handler = () => {
+      if (sessionRef.current?.running) {
+        setTimeout(() => startRendering(presetRef.current), 300);
+      }
+    };
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, [isActive, startRendering]);
+
+  // Restart when video resumes after pause — re-kick the loop
+  useEffect(() => {
+    if (!isActive) return;
+    const video = document.querySelector('video') as HTMLVideoElement | null;
+    if (!video) return;
+
+    const onPlay = () => {
+      const session = sessionRef.current;
+      if (session && !session.running) {
+        startRendering(presetRef.current);
+      }
+    };
+
+    // Restart after seamless episode change (new video source loaded)
+    const onCanPlay = () => {
+      if (sessionRef.current) {
+        startRendering(presetRef.current);
+      }
+    };
+
+    // Restart on quality/source change — video dimensions change
+    const onResize = () => {
+      const session = sessionRef.current;
+      if (session && (video.videoWidth !== session.videoWidth || video.videoHeight !== session.videoHeight)) {
+        startRendering(presetRef.current);
+      }
+    };
+
+    video.addEventListener('play', onPlay);
+    video.addEventListener('loadeddata', onCanPlay);
+    video.addEventListener('resize', onResize);
+    return () => {
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('loadeddata', onCanPlay);
+      video.removeEventListener('resize', onResize);
+    };
+  }, [isActive, startRendering]);
+
+  // Auto-start when video is ready
   useEffect(() => {
     if (!isActive) { destroySession(); return; }
 
@@ -215,6 +276,7 @@ export function useVideoEnhancement(containerRef: React.RefObject<HTMLElement | 
 
   const setPreset = useCallback((newPreset: UpscalePreset) => {
     setPresetState(newPreset);
+    presetRef.current = newPreset;
     localStorage.setItem(STORAGE_KEY, newPreset);
   }, []);
 
@@ -251,7 +313,6 @@ function buildPipelines(
   let prev = clamp.getOutputTexture();
 
   if (preset === 'light') {
-    // Clamp → Upscale → CAS
     const upscale = new anime4k.CNNx2M({ device, inputTexture: prev });
     prev = upscale.getOutputTexture();
     const cas = new CASPipeline({ device, inputTexture: prev });
@@ -260,7 +321,6 @@ function buildPipelines(
   }
 
   if (preset === 'balanced') {
-    // Clamp → Deband → Restore → Upscale → CAS
     const deband = new DebandPipeline({ device, inputTexture: prev });
     prev = deband.getOutputTexture();
     const restore = new anime4k.CNNM({ device, inputTexture: prev });
@@ -272,7 +332,6 @@ function buildPipelines(
     return [clamp, deband, restore, upscale, cas];
   }
 
-  // maximum: Clamp → Deband → DoubleRestore → Upscale → CAS
   const deband = new DebandPipeline({ device, inputTexture: prev });
   prev = deband.getOutputTexture();
   const restore1 = new anime4k.CNNM({ device, inputTexture: prev });
