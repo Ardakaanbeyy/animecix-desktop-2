@@ -19,7 +19,7 @@ export function getPlayerBaseUrl(): string | null {
 export function startPlayerServer(): Promise<number> {
     if (server) return Promise.resolve(resolvedPort);
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
     const { app } = require('electron') as typeof import('electron');
 
     const basePath = app.isPackaged
@@ -28,7 +28,7 @@ export function startPlayerServer(): Promise<number> {
 
     return new Promise((resolve, reject) => {
         server = http.createServer((req, res) => {
-            let pathname = new URL(req.url || '/', `http://localhost`).pathname;
+            const pathname = new URL(req.url || '/', `http://localhost`).pathname;
 
             let filePath = resolveAssetPath(pathname, basePath);
             if (filePath === null) {
@@ -64,7 +64,7 @@ export function startPlayerServer(): Promise<number> {
         });
 
         server.listen(0, '127.0.0.1', () => {
-            const addr = server!.address();
+            const addr = server?.address();
             resolvedPort = typeof addr === 'object' && addr ? addr.port : 0;
             console.log(`[tau-localhost] Player server on http://tau-player.localhost:${resolvedPort}`);
             resolve(resolvedPort);
